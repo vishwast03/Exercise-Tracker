@@ -73,8 +73,9 @@ app.post("/api/users/:_id/exercises", (req, res) => {
     if (!data) {
       res.json({ error: "Unknown userId" });
     } else {
+      const dateString = date.toDateString();
       data.exercises.push({
-        date: date.toDateString(),
+        date: dateString,
         duration: +req.body.duration,
         description: req.body.description,
       });
@@ -82,7 +83,7 @@ app.post("/api/users/:_id/exercises", (req, res) => {
       res.json({
         _id: id,
         username: data.username,
-        date: date.toDateString(),
+        date: dateString,
         duration: +req.body.duration,
         description: req.body.description,
       });
@@ -94,20 +95,50 @@ app.get("/api/users/:_id/logs", (req, res) => {
   const id = req.params._id;
 
   userName.findById(id, (err, data) => {
-    if (!data) {
+    if(!data) {
       res.json({ error: "Unknown userId" });
     } else {
+      let logs = data.exercises;
+
+      if(req.query !== {}) {
+        const fromDate = req.query.from;
+        const toDate = req.query.to;
+        const limit = req.query.limit;
+
+        if(fromDate && toDate) {
+          const fDate = new Date(fromDate).getTime();
+          const tDate = new Date(toDate).getTime();
+
+          logs = logs.filter(log => {
+            if(log.date.getTime() >= fDate && log.date.getTime() <= tDate)
+              return true;
+            else
+              return false;
+          });
+        }
+
+        if(limit) {
+          logs = logs.slice(0, limit);
+        }
+      }
+
+      logs = logs.map(log => {
+        return {
+          description: log.description,
+          duration: log.duration,
+          date: log.date.toDateString(),
+        }
+      });
+
       res.json({
         _id: data._id,
         username: data.username,
-        count: data.exercises.length,
-        log: data.exercises,
+        count: logs.length,
+        log: logs
       });
     }
   });
 });
-
-//--------------------------------------------------------------------------------
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log("Your app is listening on port " + listener.address().port);
